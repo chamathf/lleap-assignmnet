@@ -42,7 +42,7 @@ LLEAP.Automation/
         │
         ├── Features/              # Gherkin feature files
         │     ├── Test1_RunSession.feature
-        │     └── Test2_CollectLogs.feature
+        │
         │
         ├── Steps/                 # SpecFlow step definitions
         │     ├── Test1Steps.cs
