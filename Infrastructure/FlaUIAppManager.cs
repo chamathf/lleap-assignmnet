@@ -39,7 +39,6 @@ public class FlaUIAppManager : IDisposable
         var fileName = $"Failure_{DateTime.Now:yyyyMMdd_HHmmss}.png";
         var filePath = Path.Combine(screenshotsDir, fileName);
 
-        // ✅ FlaUI-native screenshot (no extra packages)
         window.CaptureToFile(filePath);
 
         return filePath;
