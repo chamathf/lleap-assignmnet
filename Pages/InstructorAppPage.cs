@@ -9,8 +9,26 @@ namespace LLEAP.UITestAutomation.Pages
     {
         public InstructorAppPage(ScenarioContext scenarioContext) : base(scenarioContext) { }
 
-        //This method use for Open instructor window
-        public void AttachToInstructorWindow(string processName = "InstructorApplication", TimeSpan? timeout = null)
+        // locators
+       
+        private static class ScenarioKeys
+        {
+            public const string InstructorWindow = "InstructorWindow";
+        }
+
+        private static class Names
+        {
+            public const string InstructorProcessName = "InstructorApplication";
+            public const string AddLicenseLater = "Add license later";
+        }
+
+        
+        // This method use for Open instructor window
+        
+        public void AttachToInstructorWindow(
+            string processName = Names.InstructorProcessName,
+            TimeSpan? timeout = null,
+            string instructorWindowKey = ScenarioKeys.InstructorWindow)
         {
             var t = timeout ?? TimeSpan.FromSeconds(20);
             Window? instructorWindow = null;
@@ -34,48 +52,62 @@ namespace LLEAP.UITestAutomation.Pages
 
             }, t, TimeSpan.FromMilliseconds(250), "Timed out waiting for Instructor window.");
 
-            Scenario["InstructorWindow"] = instructorWindow!;
+            Scenario[instructorWindowKey] = instructorWindow!;
         }
 
-        //This method use for click License later
-        public void ClickAddLicenseLater()
+        
+        // This method use for click License later
+        
+        public void ClickAddLicenseLater(
+            string instructorWindowKey = ScenarioKeys.InstructorWindow,
+            string addLicenseLaterText = Names.AddLicenseLater)
         {
-            var instructorWindow = RequireWindow("InstructorWindow");
+            var instructorWindow = RequireWindow(instructorWindowKey);
 
             var button = instructorWindow
                 .FindFirstDescendant(cf =>
                     cf.ByControlType(ControlType.Button)
-                      .And(cf.ByText("Add license later")))
+                      .And(cf.ByText(addLicenseLaterText)))
                 ?.AsButton();
 
             if (button == null)
-                throw new InvalidOperationException("Could not find 'Add license later' button.");
+                throw new InvalidOperationException($"Could not find '{addLicenseLaterText}' button.");
 
             button.Invoke();
         }
 
-        // This method use for verify visibleof instructor window
-        public bool IsInstructorWindowVisible()
+        
+        // This method use for Instructor window Verifications
+        
+        public bool IsInstructorWindowVisible(string instructorWindowKey = ScenarioKeys.InstructorWindow)
         {
             try
             {
-                var w = RequireWindow("InstructorWindow");
+                var w = RequireWindow(instructorWindowKey);
                 return w.IsAvailable && w.Properties.IsOffscreen.ValueOrDefault == false;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
 
-        // This method use for verify Add license later button 
-        public bool IsAddLicenseLaterButtonVisible()
+        // This method use for Add License Later Button Verification
+        public bool IsAddLicenseLaterButtonVisible(
+            string instructorWindowKey = ScenarioKeys.InstructorWindow,
+            string addLicenseLaterText = Names.AddLicenseLater)
         {
             try
             {
-                var w = RequireWindow("InstructorWindow");
+                var w = RequireWindow(instructorWindowKey);
                 var btn = w.FindFirstDescendant(cf =>
-                    cf.ByControlType(ControlType.Button).And(cf.ByText("Add license later")));
+                    cf.ByControlType(ControlType.Button).And(cf.ByText(addLicenseLaterText)));
                 return btn != null;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

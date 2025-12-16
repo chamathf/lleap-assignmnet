@@ -7,60 +7,98 @@ namespace LLEAP.UITestAutomation.Pages
 {
     public class SimulationHomePage : FlaUiPageBase
     {
-        // This is  installation path .
-        private const string LaunchPortalExePath = @"C:\Program Files (x86)\Laerdal Medical\Laerdal Simulation Home\LaunchPortal.exe";
+        
+        // locators
+       
+        private static class Paths
+        {
+            // Installation path
+            public const string LaunchPortalExePath =
+                @"C:\Program Files (x86)\Laerdal Medical\Laerdal Simulation Home\LaunchPortal.exe";
+        }
+
+        private static class ScenarioKeys
+        {
+            public const string App = "App";
+            public const string Automation = "Automation";
+            public const string HomeWindow = "HomeWindow";
+        }
+
+        private static class Names
+        {
+            public const string InstructorTileText = "LLEAP - Instructor Application";
+        }
 
         public SimulationHomePage(ScenarioContext scenarioContext) : base(scenarioContext) { }
 
-        // This method use for simulation home window
-        public void LaunchSimulationHome()
+        
+        // This method use for launch simulation home
+        
+        public void LaunchSimulationHome(string? launchPortalExePath = null)
         {
-            var app = Application.Launch(LaunchPortalExePath);
+            var exePath = launchPortalExePath ?? Paths.LaunchPortalExePath;
+
+            var app = Application.Launch(exePath);
             var automation = new UIA3Automation();
 
             var homeWindow = app.GetMainWindow(automation);
             if (homeWindow == null)
                 throw new InvalidOperationException("Could not find the LLEAP Simulation Home main window.");
 
-            Scenario["App"] = app;
-            Scenario["Automation"] = automation;
-            Scenario["HomeWindow"] = homeWindow;
+            Scenario[ScenarioKeys.App] = app;
+            Scenario[ScenarioKeys.Automation] = automation;
+            Scenario[ScenarioKeys.HomeWindow] = homeWindow;
         }
 
-        //This method use for start instructor application
-        public void StartInstructorApplication()
+       
+        // This method Start Instructor Application
+        
+        public void StartInstructorApplication(string instructorTileText = Names.InstructorTileText)
         {
-            var homeWindow = RequireWindow("HomeWindow");
+            var homeWindow = RequireWindow(ScenarioKeys.HomeWindow);
 
             var instructorTile = homeWindow
-                .FindFirstDescendant(cf => cf.ByText("LLEAP - Instructor Application"))
+                .FindFirstDescendant(cf => cf.ByText(instructorTileText))
                 ?.AsButton();
 
             if (instructorTile == null)
-                throw new InvalidOperationException("Could not find 'LLEAP - Instructor Application' tile in Simulation Home window.");
+                throw new InvalidOperationException(
+                    $"Could not find '{instructorTileText}' tile in Simulation Home window.");
 
             instructorTile.Invoke();
         }
-        // This method Verify Home window is visisble
-        public bool IsHomeWindowVisible()
+
+       
+        // This method use for Verify home window is visible
+        
+        public bool IsHomeWindowVisible(string homeWindowKey = ScenarioKeys.HomeWindow)
         {
             try
             {
-                var w = RequireWindow("HomeWindow");
+                var w = RequireWindow(homeWindowKey);
                 return w.IsAvailable && w.Properties.IsOffscreen.ValueOrDefault == false;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
-        // This method Verify Instructor title is clickabale
-        public bool IsInstructorTileClickable()
+        // This method use for verify instructor clickable
+        public bool IsInstructorTileClickable(string instructorTileText = Names.InstructorTileText)
         {
             try
             {
-                var homeWindow = RequireWindow("HomeWindow");
-                var tile = homeWindow.FindFirstDescendant(cf => cf.ByText("LLEAP - Instructor Application"))?.AsButton();
+                var homeWindow = RequireWindow(ScenarioKeys.HomeWindow);
+                var tile = homeWindow
+                    .FindFirstDescendant(cf => cf.ByText(instructorTileText))
+                    ?.AsButton();
+
                 return tile != null && tile.IsEnabled;
             }
-            catch { return false; }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

@@ -12,8 +12,33 @@ namespace LLEAP.UITestAutomation.Pages
     {
         public SessionWindowPage(ScenarioContext scenarioContext) : base(scenarioContext) { }
 
-        //This method use for start the session
-        public void StartSession()
+        
+        // locators 
+        
+        private static class Names
+        {
+            public const string StartSession = "Start session";
+            public const string SetHeartRateWindow = "Set Heart Rate";
+            public const string Ok = "OK";
+            public const string HrLabel = "HR";
+            public const string Play = "Play";
+        }
+
+        private static class AutoIds
+        {
+            public const string EyesComboBox = "EyesComboBox";
+            public const string LungComplianceRange = "range1";
+            public const string HeartRatePane = "11";
+            public const string HeartRateEdit = "2093";
+            public const string PlayButton = "PlayButton";
+        }
+
+        private const string DefaultProcessName = "InstructorApplication";
+
+        
+        // This method use for start session
+        
+        public void StartSession(string startSessionButtonName = Names.StartSession)
         {
             Window? startDialog = null;
 
@@ -25,7 +50,7 @@ namespace LLEAP.UITestAutomation.Pages
                 var dialogElement = windows.FirstOrDefault(w =>
                     w.FindFirstDescendant(cf =>
                         cf.ByControlType(ControlType.Button)
-                          .And(cf.ByName("Start session"))) != null);
+                          .And(cf.ByName(startSessionButtonName))) != null);
 
                 if (dialogElement == null)
                     throw new Exception("Start session dialog not found yet.");
@@ -37,22 +62,25 @@ namespace LLEAP.UITestAutomation.Pages
 
             var startButton = startDialog!
                 .FindFirstDescendant(cf => cf.ByControlType(ControlType.Button)
-                    .And(cf.ByName("Start session")))
+                    .And(cf.ByName(startSessionButtonName)))
                 ?.AsButton();
 
             if (startButton == null)
-                throw new Exception("'Start session' button not found.");
+                throw new Exception($"'{startSessionButtonName}' button not found.");
 
             startButton.Invoke();
         }
 
-        // This method use for get instructor session window
-        public Window GetInstructorSessionWindow(string processName = "InstructorApplication")
+        
+        // This method use for get session window
+        
+        public Window GetInstructorSessionWindow(string processName = DefaultProcessName)
             => FindInstructorWindowByProcess(processName);
 
-        public void MaximizeSessionWindowIfNeeded()
+        // This method use maximize session wondow
+        public void MaximizeSessionWindowIfNeeded(string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
             var pattern = window.Patterns.Window.Pattern;
 
             if (pattern.WindowVisualState.Value != WindowVisualState.Maximized)
@@ -60,30 +88,48 @@ namespace LLEAP.UITestAutomation.Pages
                 pattern.SetWindowVisualState(WindowVisualState.Maximized);
             }
         }
-
-        // This method use for get maximized session window
-        public bool IsSessionWindowMaximized()
+        // This method use for verify maxmized session window
+        public bool IsSessionWindowMaximized(string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
             return window.Patterns.Window.Pattern.WindowVisualState.Value
                    == WindowVisualState.Maximized;
         }
-
-        // This method use for set eyes as closed
-        public void SetEyes(string expected)
+        // This method use for verify session window visible
+        public bool IsSessionWindowVisible(string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            try
+            {
+                var window = GetInstructorSessionWindow(processName);
+                return window != null
+                       && window.IsAvailable
+                       && window.Properties.IsOffscreen.ValueOrDefault == false;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        
+        // This method use for set eyes closed
+      
+        public void SetEyes(
+            string expected,
+            string eyesComboAutomationId = AutoIds.EyesComboBox,
+            string processName = DefaultProcessName)
+        {
+            var window = GetInstructorSessionWindow(processName);
 
             var eyesComboEl = window.FindFirstDescendant(cf =>
-                cf.ByAutomationId("EyesComboBox"));
+                cf.ByAutomationId(eyesComboAutomationId));
 
             if (eyesComboEl == null)
-                throw new Exception("Eyes ComboBox not found (AutomationId=EyesComboBox).");
+                throw new Exception($"Eyes ComboBox not found (AutomationId={eyesComboAutomationId}).");
 
             var eyesCombo = eyesComboEl.AsComboBox();
             if (eyesCombo == null)
                 throw new Exception("Eyes element is not a ComboBox.");
-
 
             eyesCombo.Focus();
             eyesCombo.Click();
@@ -110,29 +156,29 @@ namespace LLEAP.UITestAutomation.Pages
                 throw new Exception($"Eyes option '{expected}' not found. Available: {available}");
             }
 
-
             item.Click();
-
 
             RetryUntilSuccess(() =>
             {
-                var current = GetEyesValue();
+                var current = GetEyesValue(eyesComboAutomationId, processName);
                 if (!string.Equals(current, expected, StringComparison.OrdinalIgnoreCase))
                     throw new Exception($"Eyes expected '{expected}' but was '{current}'.");
             }, TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(150),
                "Eyes value did not update.");
         }
 
-        //This method use for get eyes value
-        public string GetEyesValue()
+        // This method use for get eyes values
+        public string GetEyesValue(
+            string eyesComboAutomationId = AutoIds.EyesComboBox,
+            string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
 
             var eyesComboEl = window.FindFirstDescendant(cf =>
-                cf.ByAutomationId("EyesComboBox"));
+                cf.ByAutomationId(eyesComboAutomationId));
 
             if (eyesComboEl == null)
-                throw new Exception("Eyes ComboBox not found (AutomationId=EyesComboBox).");
+                throw new Exception($"Eyes ComboBox not found (AutomationId={eyesComboAutomationId}).");
 
             var eyesCombo = eyesComboEl.AsComboBox();
             if (eyesCombo == null)
@@ -148,26 +194,32 @@ namespace LLEAP.UITestAutomation.Pages
             }
         }
 
-        // This method use for set lung compilence
-        public void SetLungCompliancePercent(int targetPercent, int maxClicks = 50)
+        
+        // This methoduse for set lung compliance
+        public void SetLungCompliancePercent(
+            int targetPercent,
+            int maxClicks = 50,
+            string rangeAutomationId = AutoIds.LungComplianceRange,
+            string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
 
-            var range67 = window.FindFirstDescendant(cf => cf.ByAutomationId("range1"));
-            if (range67 == null)
-                throw new Exception("Range label (67) not found (AutomationId=range1).");
+            var rangeEl = window.FindFirstDescendant(cf => cf.ByAutomationId(rangeAutomationId));
+            if (rangeEl == null)
+                throw new Exception($"Range label not found (AutomationId={rangeAutomationId}).");
 
-            var rect = range67.BoundingRectangle;
+            var rect = rangeEl.BoundingRectangle;
 
             int minusX = (int)(rect.Left - 14);
             int y = (int)(rect.Top + rect.Height / 2);
 
             Mouse.MoveTo(minusX, y);
             Mouse.Click();
+
             Retry.WhileFalse(
                 () =>
                 {
-                    var el = window.FindFirstDescendant(cf => cf.ByAutomationId("range1"));
+                    var el = window.FindFirstDescendant(cf => cf.ByAutomationId(rangeAutomationId));
                     return el != null && el.Name?.Trim() == "67";
                 },
                 TimeSpan.FromSeconds(20),
@@ -175,165 +227,20 @@ namespace LLEAP.UITestAutomation.Pages
             );
         }
 
-        // This method use for set heart rate 
-        public void SetHeartRate(int target)
-        {
-            var window = GetInstructorSessionWindow();
-
-            var hrPane = window.FindFirstDescendant(cf => cf.ByAutomationId("11"));
-            if (hrPane == null)
-                throw new Exception("HR pane not found (AutomationId=11).");
-
-            var r = hrPane.BoundingRectangle;
-            int x = (int)(r.Left + (r.Width * 0.45));
-            int y = (int)(r.Top + (r.Height * 0.50));
-
-            Mouse.MoveTo(x, y);
-            Mouse.Click();
-
-
-            var setHrWindow = Retry.WhileNull(
-                () => window.FindFirstDescendant(cf =>
-                        cf.ByControlType(ControlType.Window).And(cf.ByName("Set Heart Rate")))
-                    ?.AsWindow(),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromMilliseconds(150)
-            ).Result;
-
-            if (setHrWindow == null)
-                throw new Exception("Set Heart Rate window not found.");
-
-
-            var hrEdit = setHrWindow.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Edit).And(cf.ByAutomationId("2093")))
-                ?.AsTextBox();
-
-            if (hrEdit == null)
-                throw new Exception("Heart Rate edit box not found (AutomationId=2093).");
-
-            hrEdit.Focus();
-            hrEdit.Text = target.ToString(CultureInfo.InvariantCulture); // clears old value and sets new
-
-
-            var okBtn = setHrWindow.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Button).And(cf.ByName("OK")))
-                ?.AsButton();
-
-            if (okBtn == null)
-                throw new Exception("OK button not found in Set Heart Rate window.");
-
-            okBtn.Invoke();
-
-
-            Retry.WhileTrue(
-                () => setHrWindow.Properties.IsOffscreen.ValueOrDefault == false,
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromMilliseconds(150)
-            );
-        }
-
-        // This method use for Get heart rate
-        public int GetHeartRate()
-        {
-            var win = GetInstructorSessionWindow();
-
-            var hrLabel = win.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Text).And(cf.ByName("HR")));
-
-            if (hrLabel == null)
-                throw new Exception("HR label not found.");
-
-            var hrRect = hrLabel.BoundingRectangle;
-            var texts = win.FindAllDescendants(cf => cf.ByControlType(ControlType.Text));
-
-            AutomationElement? best = null;
-            double bestScore = double.MaxValue;
-
-            foreach (var t in texts)
-            {
-                var name = (t.Name ?? "").Trim();
-                if (!int.TryParse(name, out var val)) continue;
-
-                var r = t.BoundingRectangle;
-                if (r.Left < hrRect.Right - 2) continue;
-                if (r.Top > hrRect.Bottom + 15 || r.Bottom < hrRect.Top - 15) continue;
-
-                var score = r.Left - hrRect.Right;
-                if (score < bestScore)
-                {
-                    bestScore = score;
-                    best = t;
-                }
-            }
-
-            if (best == null)
-                throw new Exception("Heart rate value not found.");
-
-            return int.Parse(best.Name!, CultureInfo.InvariantCulture);
-        }
-
-        // This method use for select coughing
-        public void SelectVocal(string vocalName)
-        {
-            var window = GetInstructorSessionWindow();
-
-            var item = Retry.WhileNull(
-                () => window.FindFirstDescendant(cf =>
-                        cf.ByControlType(ControlType.TreeItem).And(cf.ByName(vocalName)))
-                    ?.AsTreeItem(),
-                TimeSpan.FromSeconds(5),
-                TimeSpan.FromMilliseconds(150)
-            ).Result;
-
-            if (item == null)
-                throw new Exception($"Vocal item not found: '{vocalName}'");
-
-            item.Select();
-        }
-
-        // This method use for Play coughing sound
-        public void PlayVocalOnce()
-        {
-            var window = GetInstructorSessionWindow();
-
-            var playBtn = window.FindFirstDescendant(cf =>
-                cf.ByControlType(ControlType.Button).And(cf.ByAutomationId("PlayButton")))
-                ?.AsButton();
-
-            if (playBtn == null)
-                throw new Exception("Play button not found.");
-
-            playBtn.Invoke();
-        }
-        // This method use for verify session window
-        public bool IsSessionWindowVisible()
+        // This method use for verify Lung compliance percent
+        public int GetLungCompliancePercent(
+            string rangeAutomationId = AutoIds.LungComplianceRange,
+            string processName = DefaultProcessName)
         {
             try
             {
-                var window = GetInstructorSessionWindow();
-                return window != null
-                       && window.IsAvailable
-                       && window.Properties.IsOffscreen.ValueOrDefault == false;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        // This method use for Lung compilence
-        public int GetLungCompliancePercent()
-        {
-            try
-            {
-                var window = GetInstructorSessionWindow();
+                var window = GetInstructorSessionWindow(processName);
 
                 var valueElement = window.FindFirstDescendant(cf =>
-                    cf.ByAutomationId("range1"));
+                    cf.ByAutomationId(rangeAutomationId));
 
                 if (valueElement == null)
-                    throw new Exception("Lung compliance value element not found (AutomationId=range1).");
-
+                    throw new Exception($"Lung compliance value element not found (AutomationId={rangeAutomationId}).");
 
                 if (!string.IsNullOrWhiteSpace(valueElement.Name)
                     && int.TryParse(valueElement.Name, NumberStyles.Any, CultureInfo.InvariantCulture, out int nameValue))
@@ -356,10 +263,151 @@ namespace LLEAP.UITestAutomation.Pages
                     "Failed to read Lung Compliance percent.", ex);
             }
         }
-        // This method use for select coughing
-        public string GetSelectedVocalName()
+
+        
+        // This method use for set heart rate
+        
+        public void SetHeartRate(
+            int target,
+            string hrPaneAutomationId = AutoIds.HeartRatePane,
+            string setHrWindowName = Names.SetHeartRateWindow,
+            string hrEditAutomationId = AutoIds.HeartRateEdit,
+            string okButtonName = Names.Ok,
+            string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
+
+            var hrPane = window.FindFirstDescendant(cf => cf.ByAutomationId(hrPaneAutomationId));
+            if (hrPane == null)
+                throw new Exception($"HR pane not found (AutomationId={hrPaneAutomationId}).");
+
+            var r = hrPane.BoundingRectangle;
+            int x = (int)(r.Left + (r.Width * 0.45));
+            int y = (int)(r.Top + (r.Height * 0.50));
+
+            Mouse.MoveTo(x, y);
+            Mouse.Click();
+
+            var setHrWindow = Retry.WhileNull(
+                () => window.FindFirstDescendant(cf =>
+                        cf.ByControlType(ControlType.Window).And(cf.ByName(setHrWindowName)))
+                    ?.AsWindow(),
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromMilliseconds(150)
+            ).Result;
+
+            if (setHrWindow == null)
+                throw new Exception($"{setHrWindowName} window not found.");
+
+            var hrEdit = setHrWindow.FindFirstDescendant(cf =>
+                cf.ByControlType(ControlType.Edit).And(cf.ByAutomationId(hrEditAutomationId)))
+                ?.AsTextBox();
+
+            if (hrEdit == null)
+                throw new Exception($"Heart Rate edit box not found (AutomationId={hrEditAutomationId}).");
+
+            hrEdit.Focus();
+            hrEdit.Text = target.ToString(CultureInfo.InvariantCulture);
+
+            var okBtn = setHrWindow.FindFirstDescendant(cf =>
+                cf.ByControlType(ControlType.Button).And(cf.ByName(okButtonName)))
+                ?.AsButton();
+
+            if (okBtn == null)
+                throw new Exception($"OK button not found in {setHrWindowName} window (Name={okButtonName}).");
+
+            okBtn.Invoke();
+
+            Retry.WhileTrue(
+                () => setHrWindow.Properties.IsOffscreen.ValueOrDefault == false,
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromMilliseconds(150)
+            );
+        }
+
+        // This method use for get heart rate
+        public int GetHeartRate(
+            string hrLabelName = Names.HrLabel,
+            string processName = DefaultProcessName)
+        {
+            var win = GetInstructorSessionWindow(processName);
+
+            var hrLabel = win.FindFirstDescendant(cf =>
+                cf.ByControlType(ControlType.Text).And(cf.ByName(hrLabelName)));
+
+            if (hrLabel == null)
+                throw new Exception($"HR label not found (Name={hrLabelName}).");
+
+            var hrRect = hrLabel.BoundingRectangle;
+            var texts = win.FindAllDescendants(cf => cf.ByControlType(ControlType.Text));
+
+            AutomationElement? best = null;
+            double bestScore = double.MaxValue;
+
+            foreach (var t in texts)
+            {
+                var name = (t.Name ?? "").Trim();
+                if (!int.TryParse(name, out var _)) continue;
+
+                var r = t.BoundingRectangle;
+                if (r.Left < hrRect.Right - 2) continue;
+                if (r.Top > hrRect.Bottom + 15 || r.Bottom < hrRect.Top - 15) continue;
+
+                var score = r.Left - hrRect.Right;
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = t;
+                }
+            }
+
+            if (best == null)
+                throw new Exception("Heart rate value not found.");
+
+            return int.Parse(best.Name!, CultureInfo.InvariantCulture);
+        }
+
+        
+        // This method use for select Vocal coughing
+        
+        public void SelectVocal(string vocalName, string processName = DefaultProcessName)
+        {
+            var window = GetInstructorSessionWindow(processName);
+
+            var item = Retry.WhileNull(
+                () => window.FindFirstDescendant(cf =>
+                        cf.ByControlType(ControlType.TreeItem).And(cf.ByName(vocalName)))
+                    ?.AsTreeItem(),
+                TimeSpan.FromSeconds(5),
+                TimeSpan.FromMilliseconds(150)
+            ).Result;
+
+            if (item == null)
+                throw new Exception($"Vocal item not found: '{vocalName}'");
+
+            item.Select();
+        }
+
+        // This method use for play vocal once
+        public void PlayVocalOnce(
+            string playButtonAutomationId = AutoIds.PlayButton,
+            string processName = DefaultProcessName)
+        {
+            var window = GetInstructorSessionWindow(processName);
+
+            var playBtn = window.FindFirstDescendant(cf =>
+                cf.ByControlType(ControlType.Button).And(cf.ByAutomationId(playButtonAutomationId)))
+                ?.AsButton();
+
+            if (playBtn == null)
+                throw new Exception($"Play button not found (AutomationId={playButtonAutomationId}).");
+
+            playBtn.Invoke();
+        }
+        // This method use for get vocal name
+        public string GetSelectedVocalName(string processName = DefaultProcessName)
+        {
+            var window = GetInstructorSessionWindow(processName);
 
             var treeItems = window
                 .FindAllDescendants(cf => cf.ByControlType(ControlType.TreeItem))
@@ -374,22 +422,24 @@ namespace LLEAP.UITestAutomation.Pages
 
             return selected.Name.Trim();
         }
-
-        // This method use for verify playbutton is enabled
-        public bool IsPlayButtonEnabled()
+        // This method use for verify play button aviable
+        public bool IsPlayButtonEnabled(
+            string playText = Names.Play,
+            string playButtonAutomationId = AutoIds.PlayButton,
+            string processName = DefaultProcessName)
         {
             try
             {
-                var window = GetInstructorSessionWindow();
+                var window = GetInstructorSessionWindow(processName);
 
                 var playButton =
                     window.FindFirstDescendant(cf =>
                         cf.ByControlType(ControlType.Button)
-                          .And(cf.ByText("Play")))
+                          .And(cf.ByText(playText)))
                     ??
                     window.FindFirstDescendant(cf =>
                         cf.ByControlType(ControlType.Button)
-                          .And(cf.ByAutomationId("PlayButton")));
+                          .And(cf.ByAutomationId(playButtonAutomationId)));
 
                 if (playButton == null)
                     return false;
@@ -402,12 +452,12 @@ namespace LLEAP.UITestAutomation.Pages
                 return false;
             }
         }
-        // This method use for close the window
-        public void CloseSessionWindow()
+
+        // This method use for close the session window
+        public void CloseSessionWindow(string processName = DefaultProcessName)
         {
-            var window = GetInstructorSessionWindow();
+            var window = GetInstructorSessionWindow(processName);
             window.Close();
         }
     }
 }
-
